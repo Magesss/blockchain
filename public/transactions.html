@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>区块浏览器 - 交易列表</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .nav {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+
+        .nav a:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav a.active {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .transactions-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .transaction-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #28a745;
+            transition: transform 0.2s;
+        }
+
+        .transaction-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .transaction-item.token {
+            border-left-color: #ffc107;
+        }
+
+        .transaction-item.mint {
+            border-left-color: #17a2b8;
+        }
+
+        .transaction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .transaction-type {
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 20px;
+            color: white;
+        }
+
+        .transaction-type.transfer {
+            background-color: #28a745;
+        }
+
+        .transaction-type.token {
+            background-color: #ffc107;
+        }
+
+        .transaction-type.mint {
+            background-color: #17a2b8;
+        }
+
+        .transaction-time {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .transaction-hash {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            margin: 5px 0;
+        }
+
+        .transaction-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #495057;
+            min-width: 80px;
+        }
+
+        .info-value {
+            flex: 1;
+            text-align: right;
+            color: #333;
+        }
+
+        .address {
+            font-family: monospace;
+            font-size: 0.85rem;
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .amount-value {
+            font-weight: bold;
+            color: #28a745;
+        }
+
+        .fee-value {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 区块链浏览器</h1>
+            <p>交易列表</p>
+        </div>
+
+        <div class="nav">
+            <a href="/">首页</a>
+            <a href="/blocks">区块</a>
+            <a href="/transactions" class="active">交易</a>
+            <a href="/tokens">代币</a>
+            <a href="/transaction-visualizer">交易可视化</a>
+        </div>
+
+        <div class="transactions-container">
+            <h2>💸 交易列表</h2>
+            <div id="transactions-list">
+                <div class="loading">正在加载交易数据...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+
+        function connectWebSocket() {
+            ws = new WebSocket('ws://localhost:3001');
+
+            ws.onopen = function() {
+                console.log('WebSocket连接已建立');
+                loadTransactions();
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.type === 'newTransaction' || data.type === 'newBlock') {
+                    loadTransactions(); // 重新加载交易列表
+                }
+            };
+
+            ws.onclose = function() {
+                console.log('WebSocket连接已关闭，尝试重连...');
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        async function loadTransactions() {
+            try {
+                const response = await fetch('/api/transactions');
+                const data = await response.json();
+                displayTransactions(data.transactions || []);
+            } catch (error) {
+                console.error('加载交易失败:', error);
+                document.getElementById('transactions-list').innerHTML =
+                    '<div class="loading">加载交易数据失败</div>';
+            }
+        }
+
+        function displayTransactions(transactions) {
+            const container = document.getElementById('transactions-list');
+
+            if (transactions.length === 0) {
+                container.innerHTML = '<div class="loading">暂无交易数据</div>';
+                return;
+            }
+
+            container.innerHTML = transactions.map(tx => `
+                <div class="transaction-item ${tx.type.includes('token') ? 'token' : tx.type === 'mint_token' ? 'mint' : ''}">
+                    <div class="transaction-header">
+                        <div class="transaction-type ${tx.type.includes('token') ? 'token' : tx.type === 'mint_token' ? 'mint' : 'transfer'}">
+                            ${getTransactionTypeText(tx.type)}
+                        </div>
+                        <div class="transaction-time">${new Date(tx.timestamp).toLocaleString()}</div>
+                    </div>
+                    <div class="transaction-hash">
+                        <strong>交易ID:</strong> ${tx.id}
+                    </div>
+                    <div class="transaction-info">
+                        <div class="info-row">
+                            <span class="info-label">发送方:</span>
+                            <span class="info-value">
+                                <span class="address">${tx.from || '系统'}</span>
+                            </span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">接收方:</span>
+                            <span class="info-value">
+                                <span class="address">${tx.to}</span>
+                            </span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">金额:</span>
+                            <span class="info-value amount-value">${tx.amount} ${tx.data && tx.data.tokenName ? tx.data.tokenName : 'coins'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">手续费:</span>
+                            <span class="info-value fee-value">${tx.fee} coins</span>
+                        </div>
+                        ${tx.data && tx.data.tokenName ? `
+                        <div class="info-row">
+                            <span class="info-label">代币:</span>
+                            <span class="info-value">${tx.data.tokenName}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getTransactionTypeText(type) {
+            switch(type) {
+                case 'transfer': return '转账';
+                case 'transfer_token': return '代币转账';
+                case 'mint_token': return '铸造代币';
+                default: return type;
+            }
+        }
+
+        // 页面加载时连接WebSocket
+        connectWebSocket();
+    </script>
+</body>
+</html>

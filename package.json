@@ -1,0 +1,36 @@
+{
+  "name": "blockchain-simulator",
+  "version": "1.0.0",
+  "description": "完整的区块链模拟器 - 包含挖矿、钱包、代币、转账、浏览器等功能",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "miner": "node miner.js",
+    "wallet": "node wallet.js",
+    "explorer": "node explorer.js",
+    "dev": "nodemon index.js",
+    "test-visualizer": "node test-visualizer.js"
+  },
+  "dependencies": {
+    "crypto": "^1.0.1",
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "uuid": "^9.0.1",
+    "chalk": "^4.1.2",
+    "inquirer": "^8.2.6",
+    "qrcode": "^1.5.3",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "blockchain",
+    "cryptocurrency",
+    "mining",
+    "wallet",
+    "nodejs"
+  ],
+  "author": "Blockchain Simulator",
+  "license": "MIT"
+}

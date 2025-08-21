@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>区块链浏览器 - 钱包转账</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .nav {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+
+        .nav a:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav a.active {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .transfer-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .transfer-form {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .address-input {
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .balance-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #28a745;
+        }
+
+        .balance-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .balance-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .balance-label {
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .balance-value {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .transaction-result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .transaction-result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .transaction-result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .transaction-details {
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .quick-select {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .quick-select button {
+            padding: 6px 12px;
+            border: 1px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .quick-select button:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .wallet-list {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .wallet-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .wallet-info {
+            flex: 1;
+        }
+
+        .wallet-name {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+
+        .wallet-address {
+            font-family: monospace;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .wallet-balance {
+            text-align: right;
+            font-weight: bold;
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 区块链浏览器</h1>
+            <p>钱包转账</p>
+        </div>
+
+        <div class="nav">
+            <a href="/">首页</a>
+            <a href="/blocks">区块</a>
+            <a href="/transactions">交易</a>
+            <a href="/tokens">代币</a>
+            <a href="/transaction-visualizer">交易可视化</a>
+            <a href="/transfer" class="active">转账</a>
+        </div>
+
+        <div class="transfer-container">
+            <h2>💸 钱包转账</h2>
+
+            <div class="transfer-form">
+                <div class="form-group">
+                    <label for="transfer-type">转账类型:</label>
+                    <select id="transfer-type">
+                        <option value="coins">主币转账 (Coins)</option>
+                        <option value="tokens">代币转账 (Tokens)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="from-wallet">发送方钱包:</label>
+                    <select id="from-wallet">
+                        <option value="">请选择发送方钱包</option>
+                    </select>
+                </div>
+
+                <div class="balance-info" id="balance-info" style="display: none;">
+                    <div class="balance-item">
+                        <span class="balance-label">可用余额:</span>
+                        <span class="balance-value" id="available-balance">0 coins</span>
+                    </div>
+                    <div class="balance-item">
+                        <span class="balance-label">预计手续费:</span>
+                        <span class="balance-value" id="estimated-fee">0.001 coins</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="to-address">接收方地址:</label>
+                    <input type="text" id="to-address" class="address-input" placeholder="输入接收方钱包地址">
+                    <div class="quick-select">
+                        <button type="button" onclick="selectQuickAddress('alice')">Alice</button>
+                        <button type="button" onclick="selectQuickAddress('bob')">Bob</button>
+                        <button type="button" onclick="selectQuickAddress('charlie')">Charlie</button>
+                    </div>
+                </div>
+
+                <div class="form-group" id="token-select-group" style="display: none;">
+                    <label for="token-select">选择代币:</label>
+                    <select id="token-select">
+                        <option value="">请选择代币</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="amount">转账金额:</label>
+                    <input type="number" id="amount" step="0.01" min="0.01" placeholder="输入转账金额">
+                    <div class="quick-select">
+                        <button type="button" onclick="setQuickAmount(10)">10</button>
+                        <button type="button" onclick="setQuickAmount(50)">50</button>
+                        <button type="button" onclick="setQuickAmount(100)">100</button>
+                        <button type="button" onclick="setMaxAmount()">最大</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="custom-fee">手续费 (Gas):</label>
+                    <input type="number" id="custom-fee" step="0.001" min="0.001" placeholder="自定义手续费，留空使用建议值">
+                    <div class="quick-select">
+                        <button type="button" onclick="setQuickFee('auto')">自动</button>
+                        <button type="button" onclick="setQuickFee(0.001)">低 (0.001)</button>
+                        <button type="button" onclick="setQuickFee(0.01)">中 (0.01)</button>
+                        <button type="button" onclick="setQuickFee(0.1)">高 (0.1)</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <button type="button" class="btn btn-primary" onclick="sendTransfer()">发送转账</button>
+                    <button type="button" class="btn btn-secondary" onclick="clearForm()">清空表单</button>
+                </div>
+
+                <div class="transaction-result" id="transaction-result">
+                    <div id="result-message"></div>
+                    <div class="transaction-details" id="transaction-details"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="wallet-list">
+            <h3>💰 钱包列表</h3>
+            <div id="wallet-list-content">
+                <div class="loading">正在加载钱包信息...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let wallets = [];
+        let selectedWallet = null;
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadWallets();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('transfer-type').addEventListener('change', onTransferTypeChange);
+            document.getElementById('from-wallet').addEventListener('change', onWalletChange);
+            document.getElementById('amount').addEventListener('input', updateEstimatedFee);
+            document.getElementById('custom-fee').addEventListener('input', updateEstimatedFee);
+            document.getElementById('token-select').addEventListener('change', onTokenChange);
+        }
+
+        async function loadWallets() {
+            try {
+                // 加载钱包列表 - 这里需要一个API端点来获取钱包信息
+                const response = await fetch('/api/wallets');
+                if (response.ok) {
+                    const data = await response.json();
+                    wallets = data.wallets || [];
+                } else {
+                    // 如果没有API，使用默认钱包
+                    wallets = [
+                        { name: 'alice', address: 'alice_address_placeholder' },
+                        { name: 'bob', address: 'bob_address_placeholder' },
+                        { name: 'charlie', address: 'charlie_address_placeholder' }
+                    ];
+                }
+
+                updateWalletSelect();
+                updateWalletList();
+
+            } catch (error) {
+                console.error('加载钱包失败:', error);
+                // 使用默认钱包
+                wallets = [
+                    { name: 'alice', address: 'alice_address_placeholder' },
+                    { name: 'bob', address: 'bob_address_placeholder' },
+                    { name: 'charlie', address: 'charlie_address_placeholder' }
+                ];
+                updateWalletSelect();
+                updateWalletList();
+            }
+        }
+
+        function updateWalletSelect() {
+            const select = document.getElementById('from-wallet');
+            select.innerHTML = '<option value="">请选择发送方钱包</option>';
+
+            wallets.forEach(wallet => {
+                const option = document.createElement('option');
+                option.value = wallet.name;
+                option.textContent = `${wallet.name} (${wallet.address.substring(0, 10)}...)`;
+                select.appendChild(option);
+            });
+        }
+
+        async function updateWalletList() {
+            const container = document.getElementById('wallet-list-content');
+
+            if (wallets.length === 0) {
+                container.innerHTML = '<div class="loading">暂无钱包数据</div>';
+                return;
+            }
+
+            // 获取每个钱包的余额
+            const walletItems = await Promise.all(wallets.map(async wallet => {
+                let balance = 0;
+                try {
+                    const response = await fetch(`/api/address/${wallet.address}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        balance = data.balance || 0;
+                    }
+                } catch (error) {
+                    console.error(`获取${wallet.name}余额失败:`, error);
+                }
+
+                return `
+                    <div class="wallet-item">
+                        <div class="wallet-info">
+                            <div class="wallet-name">${wallet.name}</div>
+                            <div class="wallet-address">${wallet.address}</div>
+                        </div>
+                        <div class="wallet-balance">${balance} coins</div>
+                    </div>
+                `;
+            }));
+
+            container.innerHTML = walletItems.join('');
+        }
+
+        function onTransferTypeChange() {
+            const transferType = document.getElementById('transfer-type').value;
+            const tokenSelectGroup = document.getElementById('token-select-group');
+
+            if (transferType === 'tokens') {
+                tokenSelectGroup.style.display = 'block';
+                loadTokens();
+            } else {
+                tokenSelectGroup.style.display = 'none';
+            }
+
+            // 重新更新余额显示
+            if (selectedWallet) {
+                onWalletChange();
+            }
+        }
+
+        async function loadTokens() {
+            try {
+                const response = await fetch('/api/tokens');
+                if (response.ok) {
+                    const data = await response.json();
+                    const tokens = data.tokens || [];
+                    updateTokenSelect(tokens);
+                }
+            } catch (error) {
+                console.error('加载代币失败:', error);
+            }
+        }
+
+        function updateTokenSelect(tokens) {
+            const select = document.getElementById('token-select');
+            select.innerHTML = '<option value="">请选择代币</option>';
+
+            tokens.forEach(token => {
+                const option = document.createElement('option');
+                option.value = token.name;
+                option.textContent = `${token.name} (${token.symbol})`;
+                select.appendChild(option);
+            });
+        }
+
+        function onTokenChange() {
+            // 当选择代币时，更新余额显示
+            if (selectedWallet) {
+                updateTokenBalance();
+            }
+        }
+
+        async function updateTokenBalance() {
+            const transferType = document.getElementById('transfer-type').value;
+            const tokenName = document.getElementById('token-select').value;
+
+            if (transferType === 'tokens' && tokenName && selectedWallet) {
+                try {
+                    const response = await fetch(`/api/address/${selectedWallet.address}/tokens/${tokenName}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        document.getElementById('available-balance').textContent = `${data.balance || 0} ${tokenName}`;
+                    }
+                } catch (error) {
+                    console.error('获取代币余额失败:', error);
+                    document.getElementById('available-balance').textContent = `0 ${tokenName}`;
+                }
+            }
+        }
+
+        async function onWalletChange() {
+            const select = document.getElementById('from-wallet');
+            const walletName = select.value;
+
+            if (!walletName) {
+                document.getElementById('balance-info').style.display = 'none';
+                selectedWallet = null;
+                return;
+            }
+
+            selectedWallet = wallets.find(w => w.name === walletName);
+            if (!selectedWallet) return;
+
+            const transferType = document.getElementById('transfer-type').value;
+
+            if (transferType === 'tokens') {
+                // 代币转账模式
+                updateTokenBalance();
+            } else {
+                // 主币转账模式
+                try {
+                    const response = await fetch(`/api/address/${selectedWallet.address}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        document.getElementById('available-balance').textContent = `${data.balance || 0} coins`;
+                    }
+                } catch (error) {
+                    console.error('获取余额失败:', error);
+                }
+            }
+
+            document.getElementById('balance-info').style.display = 'block';
+        }
+
+        function selectQuickAddress(walletName) {
+            const wallet = wallets.find(w => w.name === walletName);
+            if (wallet) {
+                document.getElementById('to-address').value = wallet.address;
+            }
+        }
+
+        function setQuickAmount(amount) {
+            document.getElementById('amount').value = amount;
+            updateEstimatedFee();
+        }
+
+        function setMaxAmount() {
+            if (!selectedWallet) {
+                alert('请先选择发送方钱包');
+                return;
+            }
+
+            const balanceText = document.getElementById('available-balance').textContent;
+            const balance = parseFloat(balanceText.replace(' coins', ''));
+            const fee = 0.001; // 基础手续费
+            const maxAmount = Math.max(0, balance - fee);
+
+            document.getElementById('amount').value = maxAmount.toFixed(3);
+            updateEstimatedFee();
+        }
+
+        function updateEstimatedFee() {
+            const amount = parseFloat(document.getElementById('amount').value) || 0;
+            const customFee = parseFloat(document.getElementById('custom-fee').value);
+
+            let totalFee;
+            if (!isNaN(customFee) && customFee > 0) {
+                // 使用自定义手续费
+                totalFee = customFee;
+            } else {
+                // 使用自动计算的手续费
+                const baseFee = 0.001;
+                const amountFee = amount * 0.0001;
+                totalFee = Math.max(baseFee, amountFee);
+            }
+
+            document.getElementById('estimated-fee').textContent = `${totalFee.toFixed(6)} coins`;
+        }
+
+        function setQuickFee(fee) {
+            const feeInput = document.getElementById('custom-fee');
+            if (fee === 'auto') {
+                feeInput.value = '';
+            } else {
+                feeInput.value = fee;
+            }
+            updateEstimatedFee();
+        }
+
+        async function sendTransfer() {
+            const fromWallet = document.getElementById('from-wallet').value;
+            const toAddress = document.getElementById('to-address').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const transferType = document.getElementById('transfer-type').value;
+            const tokenName = document.getElementById('token-select').value;
+
+            // 验证输入
+            if (!fromWallet) {
+                showResult('error', '请选择发送方钱包');
+                return;
+            }
+
+            if (!toAddress) {
+                showResult('error', '请输入接收方地址');
+                return;
+            }
+
+            if (!amount || amount <= 0) {
+                showResult('error', '请输入有效的转账金额');
+                return;
+            }
+
+            if (transferType === 'tokens' && !tokenName) {
+                showResult('error', '请选择要转账的代币');
+                return;
+            }
+
+            // 禁用按钮
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '发送中...';
+
+            try {
+                const customFee = parseFloat(document.getElementById('custom-fee').value);
+                const requestBody = {
+                    from: fromWallet,
+                    to: toAddress,
+                    amount: amount,
+                    type: transferType
+                };
+
+                // 如果是代币转账，添加代币名称
+                if (transferType === 'tokens') {
+                    requestBody.tokenName = tokenName;
+                }
+
+                // 如果设置了自定义手续费，添加到请求中
+                if (!isNaN(customFee) && customFee > 0) {
+                    requestBody.customFee = customFee;
+                }
+
+                const apiEndpoint = transferType === 'tokens' ? '/api/transfer-token' : '/api/transfer';
+                const response = await fetch(apiEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showResult('success', '转账成功！', {
+                        txId: result.transactionId,
+                        amount: amount,
+                        fee: result.fee,
+                        from: fromWallet,
+                        to: toAddress.substring(0, 10) + '...'
+                    });
+
+                    // 清空表单
+                    clearForm();
+
+                    // 更新钱包列表
+                    setTimeout(() => {
+                        updateWalletList();
+                        onWalletChange();
+                    }, 1000);
+
+                } else {
+                    showResult('error', result.error || '转账失败');
+                }
+
+            } catch (error) {
+                console.error('转账失败:', error);
+                showResult('error', '网络错误，请稍后重试');
+            } finally {
+                // 恢复按钮
+                btn.disabled = false;
+                btn.textContent = '发送转账';
+            }
+        }
+
+        function showResult(type, message, details = null) {
+            const resultDiv = document.getElementById('transaction-result');
+            const messageDiv = document.getElementById('result-message');
+            const detailsDiv = document.getElementById('transaction-details');
+
+            resultDiv.className = `transaction-result ${type}`;
+            messageDiv.textContent = message;
+
+            if (details) {
+                detailsDiv.innerHTML = `
+                    <strong>交易详情:</strong><br>
+                    交易ID: ${details.txId}<br>
+                    发送方: ${details.from}<br>
+                    接收方: ${details.to}<br>
+                    金额: ${details.amount} coins<br>
+                    手续费: ${details.fee} coins
+                `;
+            } else {
+                detailsDiv.innerHTML = '';
+            }
+
+            resultDiv.style.display = 'block';
+
+            // 3秒后自动隐藏成功消息
+            if (type === 'success') {
+                setTimeout(() => {
+                    resultDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        function clearForm() {
+            document.getElementById('from-wallet').value = '';
+            document.getElementById('to-address').value = '';
+            document.getElementById('amount').value = '';
+            document.getElementById('balance-info').style.display = 'none';
+            document.getElementById('transaction-result').style.display = 'none';
+            selectedWallet = null;
+        }
+    </script>
+</body>
+</html>

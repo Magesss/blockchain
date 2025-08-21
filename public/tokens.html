@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>区块浏览器 - 代币列表</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .nav {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+
+        .nav a:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav a.active {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .tokens-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .token-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #ffc107;
+            transition: transform 0.2s;
+        }
+
+        .token-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .token-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .token-name {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #ffc107;
+        }
+
+        .token-symbol {
+            background: #ffc107;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .token-info {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #495057;
+            min-width: 100px;
+        }
+
+        .info-value {
+            flex: 1;
+            text-align: right;
+            color: #333;
+        }
+
+        .address {
+            font-family: monospace;
+            font-size: 0.85rem;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            word-break: break-all;
+            max-width: 300px;
+        }
+
+        .supply-value {
+            font-weight: bold;
+            color: #28a745;
+            font-size: 1.1rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+
+        .token-stats {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 区块链浏览器</h1>
+            <p>代币列表</p>
+        </div>
+
+        <div class="nav">
+            <a href="/">首页</a>
+            <a href="/blocks">区块</a>
+            <a href="/transactions">交易</a>
+            <a href="/tokens" class="active">代币</a>
+            <a href="/transaction-visualizer">交易可视化</a>
+            <a href="/transfer">转账</a>
+        </div>
+
+        <div class="tokens-container">
+            <h2>🪙 代币列表</h2>
+
+            <div class="token-stats">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="total-tokens">-</div>
+                        <div class="stat-label">总代币数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="total-supply">-</div>
+                        <div class="stat-label">总供应量</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="total-holders">-</div>
+                        <div class="stat-label">持有者数量</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tokens-list">
+                <div class="loading">正在加载代币数据...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+
+        function connectWebSocket() {
+            ws = new WebSocket('ws://localhost:3001');
+
+            ws.onopen = function() {
+                console.log('WebSocket连接已建立');
+                loadTokens();
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.type === 'newToken' || data.type === 'tokenTransfer') {
+                    loadTokens(); // 重新加载代币列表
+                }
+            };
+
+            ws.onclose = function() {
+                console.log('WebSocket连接已关闭，尝试重连...');
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        async function loadTokens() {
+            try {
+                const response = await fetch('/api/tokens');
+                const data = await response.json();
+                const tokens = data.tokens || [];
+                displayTokens(tokens);
+                updateStats(tokens);
+            } catch (error) {
+                console.error('加载代币失败:', error);
+                document.getElementById('tokens-list').innerHTML =
+                    '<div class="loading">加载代币数据失败</div>';
+            }
+        }
+
+        function displayTokens(tokens) {
+            const container = document.getElementById('tokens-list');
+
+            if (tokens.length === 0) {
+                container.innerHTML = '<div class="loading">暂无代币数据</div>';
+                return;
+            }
+
+            container.innerHTML = tokens.map(token => `
+                <div class="token-item">
+                    <div class="token-header">
+                        <div class="token-name">${token.name}</div>
+                        <div class="token-symbol">${token.symbol}</div>
+                    </div>
+                    <div class="token-info">
+                        <div class="info-row">
+                            <span class="info-label">总供应量:</span>
+                            <span class="info-value supply-value">${token.totalSupply.toLocaleString()}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">创建者:</span>
+                            <span class="info-value">
+                                <span class="address">${token.creator}</span>
+                            </span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">创建时间:</span>
+                            <span class="info-value">${new Date(token.createdAt).toLocaleString()}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">持有者数量:</span>
+                            <span class="info-value">${token.holdersCount || 0}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateStats(tokens) {
+            const totalTokens = tokens.length;
+            const totalSupply = tokens.reduce((sum, token) => sum + token.totalSupply, 0);
+            const totalHolders = tokens.reduce((sum, token) => sum + (token.holdersCount || 0), 0);
+
+            document.getElementById('total-tokens').textContent = totalTokens;
+            document.getElementById('total-supply').textContent = totalSupply.toLocaleString();
+            document.getElementById('total-holders').textContent = totalHolders;
+        }
+
+        // 页面加载时连接WebSocket
+        connectWebSocket();
+    </script>
+</body>
+</html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>区块浏览器 - 代币列表</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .nav {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+
+        .nav a:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav a.active {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .tokens-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .token-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #ffc107;
+            transition: transform 0.2s;
+        }
+
+        .token-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .token-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .token-name {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #ffc107;
+        }
+
+        .token-symbol {
+            background: #ffc107;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .token-info {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #495057;
+            min-width: 100px;
+        }
+
+        .info-value {
+            flex: 1;
+            text-align: right;
+            color: #333;
+        }
+
+        .address {
+            font-family: monospace;
+            font-size: 0.85rem;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            word-break: break-all;
+            max-width: 300px;
+        }
+
+        .supply-value {
+            font-weight: bold;
+            color: #28a745;
+            font-size: 1.1rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+
+        .token-stats {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 区块链浏览器</h1>
+            <p>代币列表</p>
+        </div>
+
+        <div class="nav">
+            <a href="/">首页</a>
+            <a href="/blocks">区块</a>
+            <a href="/transactions">交易</a>
+            <a href="/tokens" class="active">代币</a>
+            <a href="/transaction-visualizer">交易可视化</a>
+        </div>
+
+        <div class="tokens-container">
+            <h2>🪙 代币列表</h2>
+
+            <div class="token-stats">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="total-tokens">-</div>
+                        <div class="stat-label">总代币数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="total-supply">-</div>
+                        <div class="stat-label">总供应量</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="total-holders">-</div>
+                        <div class="stat-label">持有者数量</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tokens-list">
+                <div class="loading">正在加载代币数据...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+
+        function connectWebSocket() {
+            ws = new WebSocket('ws://localhost:3001');
+
+            ws.onopen = function() {
+                console.log('WebSocket连接已建立');
+                loadTokens();
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.type === 'newToken' || data.type === 'tokenTransfer') {
+                    loadTokens(); // 重新加载代币列表
+                }
+            };
+
+            ws.onclose = function() {
+                console.log('WebSocket连接已关闭，尝试重连...');
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        async function loadTokens() {
+            try {
+                const response = await fetch('/api/tokens');
+                const data = await response.json();
+                const tokens = data.tokens || [];
+                displayTokens(tokens);
+                updateStats(tokens);
+            } catch (error) {
+                console.error('加载代币失败:', error);
+                document.getElementById('tokens-list').innerHTML =
+                    '<div class="loading">加载代币数据失败</div>';
+            }
+        }
+
+        function displayTokens(tokens) {
+            const container = document.getElementById('tokens-list');
+
+            if (tokens.length === 0) {
+                container.innerHTML = '<div class="loading">暂无代币数据</div>';
+                return;
+            }
+
+            container.innerHTML = tokens.map(token => `
+                <div class="token-item">
+                    <div class="token-header">
+                        <div class="token-name">${token.name}</div>
+                        <div class="token-symbol">${token.symbol}</div>
+                    </div>
+                    <div class="token-info">
+                        <div class="info-row">
+                            <span class="info-label">总供应量:</span>
+                            <span class="info-value supply-value">${token.totalSupply.toLocaleString()}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">创建者:</span>
+                            <span class="info-value">
+                                <span class="address">${token.creator}</span>
+                            </span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">创建时间:</span>
+                            <span class="info-value">${new Date(token.createdAt).toLocaleString()}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">持有者数量:</span>
+                            <span class="info-value">${token.holdersCount || 0}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateStats(tokens) {
+            const totalTokens = tokens.length;
+            const totalSupply = tokens.reduce((sum, token) => sum + token.totalSupply, 0);
+            const totalHolders = tokens.reduce((sum, token) => sum + (token.holdersCount || 0), 0);
+
+            document.getElementById('total-tokens').textContent = totalTokens;
+            document.getElementById('total-supply').textContent = totalSupply.toLocaleString();
+            document.getElementById('total-holders').textContent = totalHolders;
+        }
+
+        // 页面加载时连接WebSocket
+        connectWebSocket();
+    </script>
+</body>
+</html>

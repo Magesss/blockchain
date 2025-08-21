@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>区块链浏览器 - 交易可视化</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .nav {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+
+        .nav a:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav a.active {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .visualizer-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-group label {
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .control-group select,
+        .control-group input {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        #visualization-canvas {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            background: #f8f9fa;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .transaction-log {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #28a745;
+            background: #f8f9fa;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .log-item.token {
+            border-left-color: #ffc107;
+        }
+
+        .log-item.mint {
+            border-left-color: #17a2b8;
+        }
+
+        .node {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .node:hover {
+            transform: scale(1.1);
+        }
+
+        .node.wallet {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+        }
+
+        .node.system {
+            background: linear-gradient(45deg, #28a745, #20c997);
+        }
+
+        .transaction-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transform-origin: left center;
+            opacity: 0.7;
+            z-index: 1;
+        }
+
+        .transaction-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #ffc107;
+            border-radius: 50%;
+            z-index: 2;
+            box-shadow: 0 0 10px #ffc107;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .node.active {
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes particleMove {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .particle-animation {
+            animation: particleMove 2s linear;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 区块链浏览器</h1>
+            <p>交易可视化</p>
+        </div>
+
+        <div class="nav">
+            <a href="/">首页</a>
+            <a href="/blocks">区块</a>
+            <a href="/transactions">交易</a>
+            <a href="/tokens">代币</a>
+            <a href="/transaction-visualizer" class="active">交易可视化</a>
+            <a href="/transfer">转账</a>
+        </div>
+
+        <div class="visualizer-container">
+            <div class="controls">
+                <div class="control-group">
+                    <label>显示模式:</label>
+                    <select id="display-mode">
+                        <option value="network">网络图</option>
+                        <option value="flow">流向图</option>
+                        <option value="timeline">时间线</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>交易类型:</label>
+                    <select id="transaction-type">
+                        <option value="all">全部</option>
+                        <option value="transfer">普通转账</option>
+                        <option value="token">代币交易</option>
+                        <option value="mint">铸造交易</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>动画速度:</label>
+                    <input type="range" id="animation-speed" min="1" max="10" value="5">
+                </div>
+                <div class="control-group">
+                    <button class="btn btn-primary" id="start-simulation">开始模拟</button>
+                    <button class="btn btn-danger" id="stop-simulation">停止模拟</button>
+                    <button class="btn btn-success" id="clear-canvas">清空画布</button>
+                </div>
+            </div>
+
+            <div id="visualization-canvas">
+                <div class="loading">正在加载交易数据...</div>
+            </div>
+
+            <div class="stats-panel">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-transactions">0</div>
+                    <div class="stat-label">总交易数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="active-addresses">0</div>
+                    <div class="stat-label">活跃地址</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="transaction-volume">0</div>
+                    <div class="stat-label">交易总量</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avg-transaction-size">0</div>
+                    <div class="stat-label">平均交易额</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="transaction-log">
+            <h3>📝 实时交易日志</h3>
+            <div id="transaction-log-content">
+                <div class="loading">等待交易数据...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class TransactionVisualizer {
+            constructor() {
+                this.canvas = document.getElementById('visualization-canvas');
+                this.nodes = new Map();
+                this.transactions = [];
+                this.isSimulating = false;
+                this.animationSpeed = 5;
+                this.displayMode = 'network';
+                this.transactionType = 'all';
+                this.ws = null;
+
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.connectWebSocket();
+                this.loadInitialData();
+            }
+
+            setupEventListeners() {
+                document.getElementById('start-simulation').addEventListener('click', () => this.startSimulation());
+                document.getElementById('stop-simulation').addEventListener('click', () => this.stopSimulation());
+                document.getElementById('clear-canvas').addEventListener('click', () => this.clearCanvas());
+
+                document.getElementById('display-mode').addEventListener('change', (e) => {
+                    this.displayMode = e.target.value;
+                    this.updateVisualization();
+                });
+
+                document.getElementById('transaction-type').addEventListener('change', (e) => {
+                    this.transactionType = e.target.value;
+                    this.updateVisualization();
+                });
+
+                document.getElementById('animation-speed').addEventListener('input', (e) => {
+                    this.animationSpeed = parseInt(e.target.value);
+                });
+            }
+
+            connectWebSocket() {
+                this.ws = new WebSocket('ws://localhost:3001');
+
+                this.ws.onopen = () => {
+                    console.log('WebSocket连接已建立');
+                };
+
+                this.ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'newTransaction') {
+                        this.addTransaction(data.data);
+                    } else if (data.type === 'newBlock') {
+                        this.updateStats();
+                    }
+                };
+
+                this.ws.onclose = () => {
+                    console.log('WebSocket连接已关闭，尝试重连...');
+                    setTimeout(() => this.connectWebSocket(), 3000);
+                };
+            }
+
+            async loadInitialData() {
+                try {
+                    const [transactionsRes, overviewRes] = await Promise.all([
+                        fetch('/api/transactions?limit=50'),
+                        fetch('/api/overview')
+                    ]);
+
+                    const transactionsData = await transactionsRes.json();
+                    const overviewData = await overviewRes.json();
+
+                    this.transactions = transactionsData.transactions || [];
+                    this.updateStats(overviewData.stats);
+                    this.createNodes();
+                    this.updateVisualization();
+
+                } catch (error) {
+                    console.error('加载数据失败:', error);
+                    this.canvas.innerHTML = '<div class="loading">加载数据失败</div>';
+                }
+            }
+
+            createNodes() {
+                const addresses = new Set();
+
+                // 收集所有地址
+                this.transactions.forEach(tx => {
+                    if (tx.from) addresses.add(tx.from);
+                    if (tx.to) addresses.add(tx.to);
+                });
+
+                // 创建节点
+                const canvasRect = this.canvas.getBoundingClientRect();
+                const centerX = canvasRect.width / 2;
+                const centerY = canvasRect.height / 2;
+                const radius = Math.min(centerX, centerY) - 100;
+
+                let index = 0;
+                addresses.forEach(address => {
+                    const angle = (index / addresses.size) * 2 * Math.PI;
+                    const x = centerX + radius * Math.cos(angle);
+                    const y = centerY + radius * Math.sin(angle);
+
+                    this.createNode(address, x, y);
+                    index++;
+                });
+            }
+
+            createNode(address, x, y) {
+                const node = document.createElement('div');
+                node.className = 'node wallet';
+                node.style.left = (x - 30) + 'px';
+                node.style.top = (y - 30) + 'px';
+                node.textContent = address.substring(0, 6) + '...';
+                node.title = address;
+
+                if (!address || address === 'System') {
+                    node.className = 'node system';
+                    node.textContent = 'System';
+                }
+
+                this.canvas.appendChild(node);
+                this.nodes.set(address, { element: node, x, y, address });
+            }
+
+            addTransaction(transaction) {
+                this.transactions.unshift(transaction);
+                if (this.transactions.length > 100) {
+                    this.transactions = this.transactions.slice(0, 100);
+                }
+
+                this.addToLog(transaction);
+
+                if (this.isSimulating) {
+                    this.animateTransaction(transaction);
+                }
+
+                this.updateStats();
+            }
+
+            addToLog(transaction) {
+                const logContent = document.getElementById('transaction-log-content');
+                const logItem = document.createElement('div');
+                logItem.className = `log-item ${transaction.type.includes('token') ? 'token' : transaction.type === 'mint_token' ? 'mint' : ''}`;
+
+                const time = new Date(transaction.timestamp).toLocaleTimeString();
+                const from = transaction.from || 'System';
+                const to = transaction.to;
+                const amount = transaction.amount;
+                const type = this.getTransactionTypeText(transaction.type);
+
+                logItem.innerHTML = `
+                    <strong>[${time}]</strong> ${type}:
+                    ${from.substring(0, 8)}... → ${to.substring(0, 8)}...
+                    (${amount} ${transaction.data?.tokenName || 'coins'})
+                `;
+
+                logContent.insertBefore(logItem, logContent.firstChild);
+
+                // 保持最多20条记录
+                while (logContent.children.length > 20) {
+                    logContent.removeChild(logContent.lastChild);
+                }
+            }
+
+            animateTransaction(transaction) {
+                const fromNode = this.nodes.get(transaction.from);
+                const toNode = this.nodes.get(transaction.to);
+
+                if (!fromNode || !toNode) return;
+
+                // 创建连接线
+                this.createTransactionLine(fromNode, toNode);
+
+                // 创建粒子动画
+                this.createTransactionParticle(fromNode, toNode, transaction);
+
+                // 节点高亮
+                fromNode.element.classList.add('active');
+                toNode.element.classList.add('active');
+
+                setTimeout(() => {
+                    fromNode.element.classList.remove('active');
+                    toNode.element.classList.remove('active');
+                }, 2000);
+            }
+
+            createTransactionLine(fromNode, toNode) {
+                const line = document.createElement('div');
+                line.className = 'transaction-line';
+
+                const dx = toNode.x - fromNode.x;
+                const dy = toNode.y - fromNode.y;
+                const length = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+                line.style.left = fromNode.x + 'px';
+                line.style.top = fromNode.y + 'px';
+                line.style.width = length + 'px';
+                line.style.transform = `rotate(${angle}deg)`;
+
+                this.canvas.appendChild(line);
+
+                // 2秒后移除线条
+                setTimeout(() => {
+                    if (line.parentNode) {
+                        line.parentNode.removeChild(line);
+                    }
+                }, 2000);
+            }
+
+            createTransactionParticle(fromNode, toNode, transaction) {
+                const particle = document.createElement('div');
+                particle.className = 'transaction-particle particle-animation';
+
+                const dx = toNode.x - fromNode.x;
+                const dy = toNode.y - fromNode.y;
+
+                particle.style.left = fromNode.x + 'px';
+                particle.style.top = fromNode.y + 'px';
+
+                this.canvas.appendChild(particle);
+
+                // 动画移动粒子
+                const duration = 2000 / this.animationSpeed;
+                particle.style.transition = `all ${duration}ms linear`;
+
+                setTimeout(() => {
+                    particle.style.left = toNode.x + 'px';
+                    particle.style.top = toNode.y + 'px';
+                }, 10);
+
+                // 动画结束后移除粒子
+                setTimeout(() => {
+                    if (particle.parentNode) {
+                        particle.parentNode.removeChild(particle);
+                    }
+                }, duration + 100);
+            }
+
+            updateVisualization() {
+                // 根据显示模式更新可视化
+                switch (this.displayMode) {
+                    case 'network':
+                        this.showNetworkView();
+                        break;
+                    case 'flow':
+                        this.showFlowView();
+                        break;
+                    case 'timeline':
+                        this.showTimelineView();
+                        break;
+                }
+            }
+
+            showNetworkView() {
+                // 网络图视图 - 默认的圆形布局
+                this.clearCanvas();
+                this.createNodes();
+            }
+
+            showFlowView() {
+                // 流向图视图 - 垂直布局
+                this.clearCanvas();
+                const addresses = Array.from(new Set([
+                    ...this.transactions.map(tx => tx.from).filter(Boolean),
+                    ...this.transactions.map(tx => tx.to)
+                ]));
+
+                const canvasRect = this.canvas.getBoundingClientRect();
+                const stepY = canvasRect.height / (addresses.length + 1);
+
+                addresses.forEach((address, index) => {
+                    const x = canvasRect.width / 2;
+                    const y = stepY * (index + 1);
+                    this.createNode(address, x, y);
+                });
+            }
+
+            showTimelineView() {
+                // 时间线视图 - 水平布局
+                this.clearCanvas();
+                // 这里可以实现时间线布局
+                this.showNetworkView(); // 暂时使用网络视图
+            }
+
+            startSimulation() {
+                this.isSimulating = true;
+                document.getElementById('start-simulation').disabled = true;
+                document.getElementById('stop-simulation').disabled = false;
+            }
+
+            stopSimulation() {
+                this.isSimulating = false;
+                document.getElementById('start-simulation').disabled = false;
+                document.getElementById('stop-simulation').disabled = true;
+            }
+
+            clearCanvas() {
+                this.canvas.innerHTML = '';
+                this.nodes.clear();
+            }
+
+            updateStats(stats) {
+                if (stats) {
+                    document.getElementById('total-transactions').textContent = stats.totalTransactions || 0;
+                    document.getElementById('active-addresses').textContent = stats.totalAddresses || 0;
+                }
+
+                // 计算交易统计
+                const volume = this.transactions.reduce((sum, tx) => sum + tx.amount, 0);
+                const avgSize = this.transactions.length > 0 ? volume / this.transactions.length : 0;
+
+                document.getElementById('transaction-volume').textContent = volume.toFixed(2);
+                document.getElementById('avg-transaction-size').textContent = avgSize.toFixed(2);
+            }
+
+            getTransactionTypeText(type) {
+                switch(type) {
+                    case 'transfer': return '转账';
+                    case 'transfer_token': return '代币转账';
+                    case 'mint_token': return '铸造代币';
+                    default: return type;
+                }
+            }
+        }
+
+        // 页面加载完成后初始化可视化器
+        document.addEventListener('DOMContentLoaded', () => {
+            new TransactionVisualizer();
+        });
+    </script>
+</body>
+</html>

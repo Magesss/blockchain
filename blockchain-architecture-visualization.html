@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>区块链模拟器架构可视化</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .visualization-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 1400px;
+            width: 100%;
+        }
+
+        .architecture-diagram {
+            position: relative;
+            width: 100%;
+            height: 800px;
+            background: #f8f9ff;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid #e0e6ff;
+        }
+
+        .layer {
+            position: absolute;
+            width: calc(100% - 320px);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .layer-1 { top: 50px; height: 120px; background: rgba(102, 126, 234, 0.1); }
+        .layer-2 { top: 200px; height: 120px; background: rgba(118, 75, 162, 0.1); }
+        .layer-3 { top: 350px; height: 120px; background: rgba(102, 126, 234, 0.1); }
+        .layer-4 { top: 500px; height: 120px; background: rgba(118, 75, 162, 0.1); }
+        .layer-5 { top: 650px; height: 120px; background: rgba(102, 126, 234, 0.1); }
+
+        .component {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            min-width: 140px;
+            border: 2px solid transparent;
+            position: relative;
+        }
+
+        .component:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            border-color: #667eea;
+        }
+
+        .component.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .component-title {
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .component-desc {
+            font-size: 0.7rem;
+            color: #666;
+            line-height: 1.2;
+        }
+
+        .component.active .component-desc {
+            color: rgba(255,255,255,0.9);
+        }
+
+        .connection {
+            position: absolute;
+            background: #667eea;
+            z-index: 1;
+        }
+
+        .connection-vertical {
+            width: 3px;
+            left: calc(50% - 160px);
+            transform: translateX(-50%);
+        }
+
+        .connection-horizontal {
+            height: 3px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .layer-label {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            width: 280px;
+            background: white;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border: 2px solid #e0e6ff;
+            max-height: 350px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        .info-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .info-content {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #333;
+        }
+
+        .flow-arrows {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-style: solid;
+        }
+
+        .arrow-down {
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 12px solid #667eea;
+        }
+
+        .legend {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .control-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin: 0 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+
+        .control-btn:hover {
+            background: #5a6fd8;
+        }
+
+        .control-btn.active {
+            background: #764ba2;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .component.highlight {
+            animation: pulse 1s infinite;
+            border-color: #ff6b6b;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔗 区块链模拟器架构可视化</h1>
+        <p>交互式系统架构图 - 点击组件查看详细信息</p>
+    </div>
+
+    <div class="visualization-container">
+        <div class="architecture-diagram" id="diagram">
+            <!-- 用户交互层 -->
+            <div class="layer layer-1">
+                <div class="layer-label">用户交互层</div>
+                <div class="component" data-info="cli">
+                    <div class="component-title">🖥️ 命令行界面</div>
+                    <div class="component-desc">交互式菜单系统</div>
+                </div>
+                <div class="component" data-info="web">
+                    <div class="component-title">🌐 Web界面</div>
+                    <div class="component-desc">区块链浏览器</div>
+                </div>
+                <div class="component" data-info="api">
+                    <div class="component-title">🔌 REST API</div>
+                    <div class="component-desc">HTTP接口服务</div>
+                </div>
+                <div class="component" data-info="websocket">
+                    <div class="component-title">⚡ WebSocket</div>
+                    <div class="component-desc">实时数据推送</div>
+                </div>
+            </div>
+
+            <!-- 业务逻辑层 -->
+            <div class="layer layer-2">
+                <div class="layer-label">业务逻辑层</div>
+                <div class="component" data-info="simulator">
+                    <div class="component-title">🎮 模拟器核心</div>
+                    <div class="component-desc">BlockchainSimulator</div>
+                </div>
+                <div class="component" data-info="wallet-manager">
+                    <div class="component-title">👛 钱包管理器</div>
+                    <div class="component-desc">WalletManager</div>
+                </div>
+                <div class="component" data-info="explorer">
+                    <div class="component-title">🔍 区块链浏览器</div>
+                    <div class="component-desc">BlockchainExplorer</div>
+                </div>
+            </div>
+
+            <!-- 核心服务层 -->
+            <div class="layer layer-3">
+                <div class="layer-label">核心服务层</div>
+                <div class="component" data-info="blockchain">
+                    <div class="component-title">⛓️ 区块链核心</div>
+                    <div class="component-desc">Blockchain</div>
+                </div>
+                <div class="component" data-info="miner">
+                    <div class="component-title">⛏️ 挖矿服务</div>
+                    <div class="component-desc">Miner</div>
+                </div>
+                <div class="component" data-info="mining-pool">
+                    <div class="component-title">🏊 矿池服务</div>
+                    <div class="component-desc">MiningPool</div>
+                </div>
+                <div class="component" data-info="wallet">
+                    <div class="component-title">💳 钱包服务</div>
+                    <div class="component-desc">Wallet</div>
+                </div>
+            </div>
+
+            <!-- 数据处理层 -->
+            <div class="layer layer-4">
+                <div class="layer-label">数据处理层</div>
+                <div class="component" data-info="transaction">
+                    <div class="component-title">📝 交易处理</div>
+                    <div class="component-desc">Transaction</div>
+                </div>
+                <div class="component" data-info="block">
+                    <div class="component-title">🧱 区块处理</div>
+                    <div class="component-desc">Block</div>
+                </div>
+                <div class="component" data-info="token">
+                    <div class="component-title">🪙 代币系统</div>
+                    <div class="component-desc">Token Management</div>
+                </div>
+                <div class="component" data-info="crypto">
+                    <div class="component-title">🔐 加密服务</div>
+                    <div class="component-desc">Cryptography</div>
+                </div>
+            </div>
+
+            <!-- 存储层 -->
+            <div class="layer layer-5">
+                <div class="layer-label">存储层</div>
+                <div class="component" data-info="chain-storage">
+                    <div class="component-title">💾 区块链存储</div>
+                    <div class="component-desc">内存存储</div>
+                </div>
+                <div class="component" data-info="wallet-storage">
+                    <div class="component-title">📁 钱包存储</div>
+                    <div class="component-desc">文件系统</div>
+                </div>
+                <div class="component" data-info="state">
+                    <div class="component-title">📊 状态管理</div>
+                    <div class="component-desc">余额&代币</div>
+                </div>
+            </div>
+
+            <!-- 连接线 -->
+            <div class="connection connection-vertical" style="top: 170px; height: 30px;"></div>
+            <div class="connection connection-vertical" style="top: 320px; height: 30px;"></div>
+            <div class="connection connection-vertical" style="top: 470px; height: 30px;"></div>
+            <div class="connection connection-vertical" style="top: 620px; height: 30px;"></div>
+
+            <!-- 箭头 -->
+            <div class="flow-arrows arrow-down" style="top: 185px; left: 50%; transform: translateX(-50%);"></div>
+            <div class="flow-arrows arrow-down" style="top: 335px; left: 50%; transform: translateX(-50%);"></div>
+            <div class="flow-arrows arrow-down" style="top: 485px; left: 50%; transform: translateX(-50%);"></div>
+            <div class="flow-arrows arrow-down" style="top: 635px; left: 50%; transform: translateX(-50%);"></div>
+
+            <!-- 信息面板 -->
+            <div class="info-panel" id="infoPanel">
+                <div class="info-title">💡 组件信息</div>
+                <div class="info-content" id="infoContent">
+                    点击任意组件查看详细信息和功能说明
+                </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: rgba(102, 126, 234, 0.3);"></div>
+                <span>用户交互 & 核心服务</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: rgba(118, 75, 162, 0.3);"></div>
+                <span>业务逻辑 & 数据处理</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #667eea;"></div>
+                <span>数据流向</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="control-btn" onclick="showDataFlow()">显示数据流</button>
+            <button class="control-btn" onclick="showMiningFlow()">显示挖矿流程</button>
+            <button class="control-btn" onclick="showTransactionFlow()">显示交易流程</button>
+            <button class="control-btn active" onclick="resetView()">重置视图</button>
+        </div>
+    </div>
+
+    <script>
+        // 组件信息数据
+        const componentInfo = {
+            'cli': {
+                title: '🖥️ 命令行界面 (CLI)',
+                content: `
+                    <strong>功能：</strong><br>
+                    • 提供交互式菜单系统<br>
+                    • 支持钱包管理、交易发送、挖矿控制<br>
+                    • 实时显示系统状态和事件<br>
+                    • 演示模式自动化测试<br><br>
+                    <strong>文件：</strong> index.js<br>
+                    <strong>类：</strong> BlockchainSimulator
+                `
+            },
+            'web': {
+                title: '🌐 Web界面',
+                content: `
+                    <strong>功能：</strong><br>
+                    • 区块链浏览器界面<br>
+                    • 区块和交易查询<br>
+                    • 实时数据可视化<br>
+                    • 代币管理和转账<br><br>
+                    <strong>文件：</strong> public/*.html<br>
+                    <strong>端口：</strong> 3000
+                `
+            },
+            'api': {
+                title: '🔌 REST API',
+                content: `
+                    <strong>功能：</strong><br>
+                    • /api/overview - 区块链概览<br>
+                    • /api/blocks - 区块列表<br>
+                    • /api/transactions - 交易列表<br>
+                    • /api/address/:addr - 地址信息<br><br>
+                    <strong>技术：</strong> Express.js<br>
+                    <strong>格式：</strong> JSON
+                `
+            },
+            'websocket': {
+                title: '⚡ WebSocket',
+                content: `
+                    <strong>功能：</strong><br>
+                    • 实时推送新区块信息<br>
+                    • 实时推送交易状态<br>
+                    • 挖矿状态更新<br>
+                    • 余额变化通知<br><br>
+                    <strong>技术：</strong> ws库<br>
+                    <strong>协议：</strong> WebSocket
+                `
+            },
+            'simulator': {
+                title: '🎮 模拟器核心',
+                content: `
+                    <strong>功能：</strong><br>
+                    • 系统初始化和配置<br>
+                    • 组件协调和管理<br>
+                    • 事件监听和处理<br>
+                    • 演示模式控制<br><br>
+                    <strong>文件：</strong> index.js<br>
+                    <strong>模式：</strong> 单例模式
+                `
+            },
+            'wallet-manager': {
+                title: '👛 钱包管理器',
+                content: `
+                    <strong>功能：</strong><br>
+                    • 钱包创建和导入<br>
+                    • 密钥对管理<br>
+                    • 钱包文件持久化<br>
+                    • 多钱包切换<br><br>
+                    <strong>文件：</strong> src/wallet.js<br>
+                    <strong>类：</strong> WalletManager
+                `
+            },
+            'explorer': {
+                title: '🔍 区块链浏览器',
+                content: `
+                    <strong>功能：</strong><br>
+                    • Web服务器管理<br>
+                    • API路由处理<br>
+                    • WebSocket服务<br>
+                    • 静态文件服务<br><br>
+                    <strong>文件：</strong> src/explorer.js<br>
+                    <strong>类：</strong> BlockchainExplorer
+                `
+            },
+            'blockchain': {
+                title: '⛓️ 区块链核心',
+                content: `
+                    <strong>功能：</strong><br>
+                    • 区块链数据结构维护<br>
+                    • 交易验证和处理<br>
+                    • 余额计算和管理<br>
+                    • 链有效性验证<br><br>
+                    <strong>文件：</strong> src/blockchain.js<br>
+                    <strong>类：</strong> Blockchain
+                `
+            },
+            'miner': {
+                title: '⛏️ 挖矿服务',
+                content: `
+                    <strong>功能：</strong><br>
+                    • 工作量证明挖矿<br>
+                    • 区块创建和验证<br>
+                    • 挖矿统计和监控<br>
+                    • 多矿工并行支持<br><br>
+                    <strong>文件：</strong> src/miner.js<br>
+                    <strong>类：</strong> Miner
+                `
+            },
+            'mining-pool': {
+                title: '🏊 矿池服务',
+                content: `
+                    <strong>功能：</strong><br>
+                    • 矿工协作挖矿<br>
+                    • 奖励分配算法<br>
+                    • 矿池统计管理<br>
+                    • 负载均衡<br><br>
+                    <strong>文件：</strong> src/miner.js<br>
+                    <strong>类：</strong> MiningPool
+                `
+            },
+            'wallet': {
+                title: '💳 钱包服务',
+                content: `
+                    <strong>功能：</strong><br>
+                    • RSA密钥对生成<br>
+                    • 数字签名和验证<br>
+                    • 地址生成算法<br>
+                    • 私钥加密存储<br><br>
+                    <strong>文件：</strong> src/wallet.js<br>
+                    <strong>类：</strong> Wallet
+                `
+            },
+            'transaction': {
+                title: '📝 交易处理',
+                content: `
+                    <strong>功能：</strong><br>
+                    • 交易对象创建<br>
+                    • 数字签名验证<br>
+                    • 手续费计算<br>
+                    • 交易类型支持<br><br>
+                    <strong>类型：</strong> transfer, mint_token, mining_reward<br>
+                    <strong>类：</strong> Transaction
+                `
+            },
+            'block': {
+                title: '🧱 区块处理',
+                content: `
+                    <strong>功能：</strong><br>
+                    • 区块数据结构<br>
+                    • 哈希计算和验证<br>
+                    • 工作量证明算法<br>
+                    • 区块链接和验证<br><br>
+                    <strong>算法：</strong> SHA-256<br>
+                    <strong>类：</strong> Block
+                `
+            },
+            'token': {
+                title: '🪙 代币系统',
+                content: `
+                    <strong>功能：</strong><br>
+                    • 自定义代币创建<br>
+                    • 代币转账处理<br>
+                    • 代币铸造和销毁<br>
+                    • 多代币余额管理<br><br>
+                    <strong>标准：</strong> 类ERC-20<br>
+                    <strong>存储：</strong> Map结构
+                `
+            },
+            'crypto': {
+                title: '🔐 加密服务',
+                content: `
+                    <strong>功能：</strong><br>
+                    • RSA密钥对生成<br>
+                    • SHA-256哈希计算<br>
+                    • 数字签名算法<br>
+                    • 地址生成算法<br><br>
+                    <strong>库：</strong> Node.js crypto<br>
+                    <strong>算法：</strong> RSA-2048, SHA-256
+                `
+            },
+            'chain-storage': {
+                title: '💾 区块链存储',
+                content: `
+                    <strong>功能：</strong><br>
+                    • 区块链数据存储<br>
+                    • 交易池管理<br>
+                    • 内存数据结构<br>
+                    • 快速查询索引<br><br>
+                    <strong>结构：</strong> Array + Map<br>
+                    <strong>类型：</strong> 内存存储
+                `
+            },
+            'wallet-storage': {
+                title: '📁 钱包存储',
+                content: `
+                    <strong>功能：</strong><br>
+                    • 钱包文件持久化<br>
+                    • JSON格式存储<br>
+                    • 密钥安全存储<br>
+                    • 批量导入导出<br><br>
+                    <strong>格式：</strong> JSON<br>
+                    <strong>位置：</strong> ./wallets/
+                `
+            },
+            'state': {
+                title: '📊 状态管理',
+                content: `
+                    <strong>功能：</strong><br>
+                    • 账户余额管理<br>
+                    • 代币余额跟踪<br>
+                    • 交易状态维护<br>
+                    • 系统统计信息<br><br>
+                    <strong>结构：</strong> Map + EventEmitter<br>
+                    <strong>更新：</strong> 实时计算
+                `
+            }
+        };
+
+        // 事件监听
+        document.addEventListener('DOMContentLoaded', function() {
+            const components = document.querySelectorAll('.component');
+            const infoContent = document.getElementById('infoContent');
+
+            components.forEach(component => {
+                component.addEventListener('click', function() {
+                    // 移除其他组件的active状态
+                    components.forEach(c => c.classList.remove('active'));
+
+                    // 添加当前组件的active状态
+                    this.classList.add('active');
+
+                    // 更新信息面板
+                    const infoKey = this.getAttribute('data-info');
+                    const info = componentInfo[infoKey];
+
+                    if (info) {
+                        document.querySelector('.info-title').textContent = info.title;
+                        infoContent.innerHTML = info.content;
+                    }
+                });
+            });
+        });
+
+        // 控制函数
+        function resetView() {
+            const components = document.querySelectorAll('.component');
+            const buttons = document.querySelectorAll('.control-btn');
+
+            components.forEach(c => {
+                c.classList.remove('active', 'highlight');
+            });
+
+            buttons.forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+
+            document.querySelector('.info-title').textContent = '💡 组件信息';
+            document.getElementById('infoContent').textContent = '点击任意组件查看详细信息和功能说明';
+        }
+
+        function showDataFlow() {
+            resetView();
+            const flowComponents = ['cli', 'web', 'simulator', 'blockchain', 'transaction', 'chain-storage'];
+            highlightFlow(flowComponents);
+
+            document.querySelector('.info-title').textContent = '📊 数据流向';
+            document.getElementById('infoContent').innerHTML = `
+                <strong>数据流向说明：</strong><br>
+                1. 用户通过CLI或Web界面输入<br>
+                2. 模拟器核心处理用户请求<br>
+                3. 区块链核心验证和处理数据<br>
+                4. 交易处理模块执行具体操作<br>
+                5. 数据存储到区块链存储<br>
+                6. 状态更新并返回结果
+            `;
+        }
+
+        function showMiningFlow() {
+            resetView();
+            const miningComponents = ['miner', 'mining-pool', 'blockchain', 'block', 'crypto'];
+            highlightFlow(miningComponents);
+
+            document.querySelector('.info-title').textContent = '⛏️ 挖矿流程';
+            document.getElementById('infoContent').innerHTML = `
+                <strong>挖矿流程说明：</strong><br>
+                1. 矿工或矿池启动挖矿<br>
+                2. 从区块链获取待处理交易<br>
+                3. 创建新区块并设置参数<br>
+                4. 使用加密服务进行工作量证明<br>
+                5. 找到有效哈希后添加到链<br>
+                6. 分配挖矿奖励并更新状态
+            `;
+        }
+
+        function showTransactionFlow() {
+            resetView();
+            const txComponents = ['wallet', 'transaction', 'blockchain', 'crypto', 'state'];
+            highlightFlow(txComponents);
+
+            document.querySelector('.info-title').textContent = '💸 交易流程';
+            document.getElementById('infoContent').innerHTML = `
+                <strong>交易流程说明：</strong><br>
+                1. 钱包创建并签名交易<br>
+                2. 交易对象验证格式和签名<br>
+                3. 区块链核心验证余额和权限<br>
+                4. 加密服务验证数字签名<br>
+                5. 交易添加到待处理池<br>
+                6. 状态管理更新余额信息
+            `;
+        }
+
+        function highlightFlow(componentKeys) {
+            const components = document.querySelectorAll('.component');
+            const buttons = document.querySelectorAll('.control-btn');
+
+            buttons.forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+
+            components.forEach(component => {
+                const key = component.getAttribute('data-info');
+                if (componentKeys.includes(key)) {
+                    component.classList.add('highlight');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>区块浏览器 - 区块列表</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .nav {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+
+        .nav a:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav a.active {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .blocks-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .block-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s;
+        }
+
+        .block-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .block-height {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .block-time {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .block-hash {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            margin: 5px 0;
+        }
+
+        .block-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #495057;
+            min-width: 80px;
+        }
+
+        .info-value {
+            flex: 1;
+            text-align: right;
+            color: #333;
+        }
+
+        .hash-value {
+            font-family: monospace;
+            font-size: 0.85rem;
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 区块链浏览器</h1>
+            <p>区块列表</p>
+        </div>
+
+        <div class="nav">
+            <a href="/">首页</a>
+            <a href="/blocks" class="active">区块</a>
+            <a href="/transactions">交易</a>
+            <a href="/tokens">代币</a>
+            <a href="/transaction-visualizer">交易可视化</a>
+        </div>
+
+        <div class="blocks-container">
+            <h2>📦 区块列表</h2>
+            <div id="blocks-list">
+                <div class="loading">正在加载区块数据...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+
+        function connectWebSocket() {
+            ws = new WebSocket('ws://localhost:3001');
+
+            ws.onopen = function() {
+                console.log('WebSocket连接已建立');
+                loadBlocks();
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.type === 'newBlock') {
+                    loadBlocks(); // 重新加载区块列表
+                }
+            };
+
+            ws.onclose = function() {
+                console.log('WebSocket连接已关闭，尝试重连...');
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        async function loadBlocks() {
+            try {
+                const response = await fetch('/api/blocks');
+                const data = await response.json();
+                const blocks = data.blocks || [];
+                displayBlocks(blocks);
+            } catch (error) {
+                console.error('加载区块失败:', error);
+                document.getElementById('blocks-list').innerHTML =
+                    '<div class="loading">加载区块数据失败</div>';
+            }
+        }
+
+        function displayBlocks(blocks) {
+            const container = document.getElementById('blocks-list');
+
+            if (blocks.length === 0) {
+                container.innerHTML = '<div class="loading">暂无区块数据</div>';
+                return;
+            }
+
+            container.innerHTML = blocks.map(block => `
+                <div class="block-item">
+                    <div class="block-header">
+                        <div class="block-height">区块 #${block.height}</div>
+                        <div class="block-time">${new Date(block.timestamp).toLocaleString()}</div>
+                    </div>
+                    <div class="block-hash">
+                        <strong>哈希:</strong> ${block.hash}
+                    </div>
+                    <div class="block-hash">
+                        <strong>前一区块:</strong> ${block.previousHash || '创世区块'}
+                    </div>
+                    <div class="block-info">
+                        <div class="info-row">
+                            <span class="info-label">交易数量:</span>
+                            <span class="info-value">${block.transactionCount || 0}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">矿工:</span>
+                            <span class="info-value hash-value">${block.miner || '系统'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">随机数:</span>
+                            <span class="info-value">${block.nonce}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">难度:</span>
+                            <span class="info-value">${block.difficulty || 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 页面加载时连接WebSocket
+        connectWebSocket();
+    </script>
+</body>
+</html>
